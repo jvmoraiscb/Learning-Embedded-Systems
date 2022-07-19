@@ -23,15 +23,16 @@
 #include <OrangutanLCD.h>
 #include <OrangutanPushbuttons.h>
 #include <OrangutanBuzzer.h>
+#include <string.h>
 
 Pololu3pi robot;
 int timeout = 0;
-int speed_max = 100;
+int speed_max = 50;
 unsigned int sensors[5]; // an array to hold sensor values
 unsigned int last_proportional = 0;
 long integral = 0;
 
-void do_all(int action);
+void do_all(char *string_actions);
 
 // This include file allows data to be stored in program space.  The
 // ATmega168 has 16k of program space compared to 1k of RAM, so large
@@ -42,16 +43,19 @@ void do_all(int action);
 const char welcome[] PROGMEM = ">g32>>c32";
 const char welcome2[] PROGMEM = ">c32>>d32";
 const char go[] PROGMEM = "L16 cdegreg4";
-const char music1[] PROGMEM = "arergrdrarergrdrarrarrergrrrdarrrerrgrrr";
-const char music2[] PROGMEM = "!T240 L8 MS >e<eb>c>d>e16>d16>cba<aa>c>e";
+const char music1[] PROGMEM = "!T180 L8 b-<gab-g<gb-<fab-g<fb-<e-ab-g<e-b-<dab-g<d b-<gab-g<gb-<fab-g<fb-<e-ab-g<e-b-<dab-g<d  >d<g>c>db-<g>d<f>c>db-<f>d<e->c>db-<e->d<d>c>db-<d >d<g>c>db-<g>d<f>c>db-<f>d<e->c>db-<e->d<d>c<db-<d  >g<g>g16r16>g>f>e->d<f>d16r16>d>cb->c<e->c16r16>c>d>cb-<dg16r16g16r16g<d  def+gab->c>d>c<db-<d def+gab->c>d>c<db-<d >b-r>a>b->g";
+const char music2[] PROGMEM = "!T240 L8 MS >e<eb>c>d>e16>d16>cba<aa>c>e<a>d>cb<g+b>c>d<e>e<e>c<aarae<bc d>d<d>f>ad16d16>g>f>e<cr>c>e<g>d>cb<g+b>c>d<e>e<e>c<aa<aa";
 const char plim1[] PROGMEM = ">g32";
-const char plim2[] PROGMEM = ">C32";
+const char plim2[] PROGMEM = ">c32";
 
 // Initializes the 3pi, displays a welcome message, calibrates, and
 // plays the initial music.  This function is automatically called
 // by the Arduino framework at the start of program execution.
 void setup()
 {
+  OrangutanBuzzer::playFromProgramSpace(welcome);
+  while(OrangutanBuzzer::isPlaying());
+
   unsigned int counter; // used as a simple timer
 
   // This must be called at the beginning of 3pi code, to set up the
@@ -113,7 +117,9 @@ void setup()
 // The main function.  This function is repeatedly called by
 // the Arduino framework.
 void loop(){
+  unsigned int counter = 0;
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
+    counter++;
     // Get the position of the line.  Note that we *must* provide
     // the "sensors" argument to read_line() here, even though we
     // are not interested in the individual sensor readings.
@@ -147,20 +153,25 @@ void loop(){
     if (power_difference < -maximum)
       power_difference = -maximum;
 
-    //if (power_difference < 0)
-      //OrangutanMotors::setSpeeds(maximum + power_difference, maximum);
-    //else
+    if (power_difference < 0)
+      OrangutanMotors::setSpeeds(maximum + power_difference, maximum);
+    else
       OrangutanMotors::setSpeeds(maximum, maximum - power_difference);
 
-    // Quando os sensores 4 ou 0 estao no valor maximo
-    // o pololu encontrou uma segunda pista
-    if(sensors[4] == 1000){
-      OrangutanBuzzer::playFromProgramSpace(plim1);
-      do_all(DOUBLE_SPEED);
+    if(counter >= 200){
+      // Quando os sensores 4 ou 0 estao no valor maximo
+      // o pololu encontrou uma segunda pista
+      if(sensors[4] == 1000){
+        counter = 0;
+        OrangutanBuzzer::playFromProgramSpace(plim1);
+        do_all("stop music2 doubleSpeed");
+      }
+      if(sensors[0] == 1000){
+        counter = 0;
+        OrangutanBuzzer::playFromProgramSpace(plim2);
+        do_all("stop music1 halfSpeed");
+      }
     }
-    if(sensors[0] == 1000)
-      OrangutanBuzzer::playFromProgramSpace(plim2);
-      do_all(STOP);
   }
   
   OrangutanPushbuttons::waitForRelease(BUTTON_B);
@@ -169,42 +180,51 @@ void loop(){
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
     if(OrangutanPushbuttons::isPressed(BUTTON_A)){
       OrangutanPushbuttons::waitForRelease(BUTTON_A);
-      OrangutanBuzzer::playFromProgramSpace(music1);
-      while(OrangutanBuzzer::isPlaying());
+      do_all("music1");
     }
     if(OrangutanPushbuttons::isPressed(BUTTON_C)){
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
-      OrangutanBuzzer::playFromProgramSpace(music2);
-      while(OrangutanBuzzer::isPlaying());
+      do_all("music2");
     }
   }
   OrangutanPushbuttons::waitForRelease(BUTTON_B);
   delay(1000);
 }
-void do_all(int action){
-    if(action == STOP){
-      delay(20);
-      OrangutanMotors::setSpeeds(50, 50);
-      delay(20);
-      OrangutanMotors::setSpeeds(25, 25);
-      delay(20);
-      OrangutanMotors::setSpeeds(0, 0);
-      delay(timeout*1000);
-    }
-    if(action == DOUBLE_SPEED){
-      speed_max = 100;
-      if(speed_max > 100)
-        speed_max = 100;
-    }
-    if(action == HALF_SPEED){
-      speed_max = 50;
-      if(speed_max < 50)
-        speed_max = 50;
-    }
-    if(action == TURN360){
-      delay(timeout*1000);
-    }
-    if(action == TURN180){
-      delay(timeout*1000);
+void do_all(char *string_actions){
+  char string[100];   
+  char delimit[]=" \0";                                  
+  string = strtok(string_actions,delimit);
+    while(string != NULL)                 
+    {
+      if(!strcmp(string, "stop")){
+        OrangutanMotors::setSpeeds(0, 0);
+        delay(timeout*1000);
+      }
+      if(!strcmp(string, "doubleSpeed")){
+        speed_max = speed_max*2;
+        if(speed_max > 125)
+          speed_max = 125;
+      }
+      if(!strcmp(string, "halfSpeed")){
+        speed_max = speed_max/2;
+        if(speed_max < 25)
+          speed_max = 25;
+      }
+      if(!strcmp(string, "turn360")){
+        delay(timeout*1000);
+      }
+      if(!strcmp(string, "turn180")){
+        delay(timeout*1000);
+      }
+      if(!strcmp(string, "music1")){
+        OrangutanBuzzer::playFromProgramSpace(music1);
+        while(OrangutanBuzzer::isPlaying());
+      }
+      if(!strcmp(string, "music2")){
+        OrangutanBuzzer::playFromProgramSpace(music2);
+        while(OrangutanBuzzer::isPlaying());
+      }
+
+      string = strtok(NULL,delimit);
     }
 }
