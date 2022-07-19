@@ -122,16 +122,18 @@ void setup()
 // The main function.  This function is repeatedly called by
 // the Arduino framework.
 void loop(){
-  int i_max = 5;
-  int method[i_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
+  int right_max = 5;
+  int method_right[right_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
+  int left_max = 5;
+  int method_left[left_max] = {TURN180,TURN360,DOUBLE_SPEED,HALF_SPEED,TURN180};
 
   int i_left = 0;
   int i_right = 0;
   unsigned int counter = 0;
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
-    if(i_right > i_max)
+    if(i_right > right_max)
       i_right = 0;
-    if(i_left > i_max)
+    if(i_left > left_max)
       i_left = 0;
     // Get the position of the line.  Note that we *must* provide
     // the "sensors" argument to read_line() here, even though we
@@ -177,13 +179,13 @@ void loop(){
       if(sensors[4] == 1000){ // RIGHT
         counter = 0;
         OrangutanBuzzer::playFromProgramSpace(plim1);
-        do_all(method[i_right]);
+        do_all(method_right[i_right]);
         i_right++;
       }
       if(sensors[0] == 1000){ // LEFT
         counter = 0;
         OrangutanBuzzer::playFromProgramSpace(plim2);
-        do_all(method[i_left]);
+        do_all(method_left[i_left]);
         i_left++;
       }
     }
