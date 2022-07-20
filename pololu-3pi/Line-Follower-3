@@ -17,6 +17,9 @@
 #define MUSIC1 5
 #define MUSIC2 6
 
+#define SPEEDLIMIT_MAX 180
+#define SPEEDLIMIT_MINIMUM 70
+
 // The following libraries will be needed by this demo
 #include <Pololu3pi.h>
 #include <PololuQTRSensors.h>
@@ -26,13 +29,10 @@
 #include <OrangutanLCD.h>
 #include <OrangutanPushbuttons.h>
 #include <OrangutanBuzzer.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 Pololu3pi robot;
 int timeout = 0;
-int speed_max = 50;
+int speed_max = 100;
 unsigned int sensors[5]; // an array to hold sensor values
 unsigned int last_proportional = 0;
 long integral = 0;
@@ -81,8 +81,7 @@ void setup()
       OrangutanBuzzer::playFromProgramSpace(plim2);
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
     }
-    /*
-    if(OrangutanPushbuttons::isPressed(BUTTON_A)){
+    /*if(OrangutanPushbuttons::isPressed(BUTTON_A)){
       if(speed_max >= 10){
         speed_max = speed_max - 10;
         OrangutanBuzzer::playFromProgramSpace(plim1);
@@ -95,8 +94,7 @@ void setup()
         OrangutanBuzzer::playFromProgramSpace(plim2);
       }
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
-    }
-    */
+    }*/
   }
 
   // Always wait for the button to be released so that 3pi doesn't
@@ -137,7 +135,7 @@ void setup()
 
 // The main function.  This function is repeatedly called by
 // the Arduino framework.
-void loop(){
+void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
   int right_max = 5;
   int method_right[right_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
   int left_max = 5;
@@ -147,9 +145,9 @@ void loop(){
   int i_right = 0;
   unsigned int counter = 0;
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
-    if(i_right > right_max)
+    if(i_right > right_max-1)
       i_right = 0;
-    if(i_left > left_max)
+    if(i_left > left_max-1)
       i_left = 0;
     // Get the position of the line.  Note that we *must* provide
     // the "sensors" argument to read_line() here, even though we
@@ -193,7 +191,7 @@ void loop(){
     else
       OrangutanMotors::setSpeeds(maximum, maximum - power_difference);
 
-    if(counter > 200 && proportional >= -1000 && proportional <= 1000){
+    if(counter > 200){ // && proportional >= -1500 && proportional <= 1500
       // Quando os sensores 4 ou 0 estao no valor maximo
       // o pololu encontrou uma segunda pista
       if(sensors[4] == 1000){ // RIGHT
@@ -230,7 +228,12 @@ void loop(){
 }
 void do_all(int action){
       if(action == STOP){
-        OrangutanMotors::setSpeeds(0, 0);
+        int speed_now = speed_max;
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(0,0);
         if(timeout == 0)
           delay(100);
         else
@@ -238,24 +241,36 @@ void do_all(int action){
       }
       if(action == DOUBLE_SPEED){
         speed_max = speed_max*2;
-        if(speed_max > 250)
-          speed_max = 250;
+        if(speed_max > SPEEDLIMIT_MAX)
+          speed_max = SPEEDLIMIT_MAX;
       }
       if(action == HALF_SPEED){
         speed_max = speed_max/2;
-        if(speed_max < 50)
-          speed_max = 50;
+        if(speed_max < SPEEDLIMIT_MINIMUM)
+          speed_max = SPEEDLIMIT_MINIMUM;
       }
       if(action == TURN360){
+        int speed_now = speed_max;
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(0,0);
         int counter;
-        for (counter=0; counter<50; counter++){
+        for (counter=0; counter<40; counter++){
           OrangutanMotors::setSpeeds(80, -80);
           delay(20);
         }
       }
       if(action == TURN180){
+        int speed_now = speed_max;
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
+        delay(20);
+        OrangutanMotors::setSpeeds(0,0);
         int counter;
-        for (counter=0; counter<25; counter++){
+        for (counter=0; counter<20; counter++){
           OrangutanMotors::setSpeeds(80, -80);
           delay(20);
         }
