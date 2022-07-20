@@ -32,7 +32,7 @@
 
 Pololu3pi robot;
 int timeout = 0;
-int speed_max = 80;
+int speed_max = 50;
 unsigned int sensors[5]; // an array to hold sensor values
 unsigned int last_proportional = 0;
 long integral = 0;
@@ -81,6 +81,22 @@ void setup()
       OrangutanBuzzer::playFromProgramSpace(plim2);
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
     }
+    /*
+    if(OrangutanPushbuttons::isPressed(BUTTON_A)){
+      if(speed_max >= 10){
+        speed_max = speed_max - 10;
+        OrangutanBuzzer::playFromProgramSpace(plim1);
+      }
+      OrangutanPushbuttons::waitForRelease(BUTTON_A);
+    }
+    if(OrangutanPushbuttons::isPressed(BUTTON_C)){
+      if(speed_max <= 240){
+        speed_max = speed_max + 10;
+        OrangutanBuzzer::playFromProgramSpace(plim2);
+      }
+      OrangutanPushbuttons::waitForRelease(BUTTON_C);
+    }
+    */
   }
 
   // Always wait for the button to be released so that 3pi doesn't
@@ -125,7 +141,7 @@ void loop(){
   int right_max = 5;
   int method_right[right_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
   int left_max = 5;
-  int method_left[left_max] = {TURN180,TURN360,DOUBLE_SPEED,HALF_SPEED,TURN180};
+  int method_left[left_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
 
   int i_left = 0;
   int i_right = 0;
@@ -158,7 +174,11 @@ void loop(){
     // the sharpness of the turn.  You can adjust the constants by which
     // the proportional, integral, and derivative terms are multiplied to
     // improve performance.
-    int power_difference = proportional/20 + integral/10000 + derivative*3/2;
+    int power_difference;
+    if(speed_max <= 100)
+      power_difference = proportional/20 + integral/10000 + derivative*3/2;
+    else
+      power_difference = proportional/3 + integral/50000 + derivative*4/1;
 
     // Compute the actual motor settings.  We never set either motor
     // to a negative value.
@@ -173,7 +193,7 @@ void loop(){
     else
       OrangutanMotors::setSpeeds(maximum, maximum - power_difference);
 
-    if(counter > 200){
+    if(counter > 200 && proportional >= -1000 && proportional <= 1000){
       // Quando os sensores 4 ou 0 estao no valor maximo
       // o pololu encontrou uma segunda pista
       if(sensors[4] == 1000){ // RIGHT
@@ -218,25 +238,25 @@ void do_all(int action){
       }
       if(action == DOUBLE_SPEED){
         speed_max = speed_max*2;
-        if(speed_max > 100)
-          speed_max = 100;
+        if(speed_max > 250)
+          speed_max = 250;
       }
       if(action == HALF_SPEED){
         speed_max = speed_max/2;
-        if(speed_max < 40)
-          speed_max = 40;
+        if(speed_max < 50)
+          speed_max = 50;
       }
       if(action == TURN360){
         int counter;
-        for (counter=0; counter<100; counter++){
-          OrangutanMotors::setSpeeds(40, -40);
+        for (counter=0; counter<50; counter++){
+          OrangutanMotors::setSpeeds(80, -80);
           delay(20);
         }
       }
       if(action == TURN180){
         int counter;
-        for (counter=0; counter<50; counter++){
-          OrangutanMotors::setSpeeds(40, -40);
+        for (counter=0; counter<25; counter++){
+          OrangutanMotors::setSpeeds(80, -80);
           delay(20);
         }
       }
