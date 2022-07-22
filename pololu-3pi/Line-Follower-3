@@ -17,8 +17,8 @@
 #define MUSIC1 5
 #define MUSIC2 6
 
-#define SPEEDLIMIT_MAX 180
-#define SPEEDLIMIT_MINIMUM 70
+#define SPEED_MAX 180
+#define SPEED_MIN 70
 
 // The following libraries will be needed by this demo
 #include <Pololu3pi.h>
@@ -31,13 +31,14 @@
 #include <OrangutanBuzzer.h>
 
 Pololu3pi robot;
-int timeout = 0;
-int speed_max = 100;
+int timeout = 0; // timeout starts in 0
+int speed_now = 100; // initial speed is 100
 unsigned int sensors[5]; // an array to hold sensor values
 unsigned int last_proportional = 0;
 long integral = 0;
 
-void do_all(int action);
+void fix_it(int action); // faz-tudo function
+void brake(); // brake function
 
 // This include file allows data to be stored in program space.  The
 // ATmega168 has 16k of program space compared to 1k of RAM, so large
@@ -68,6 +69,7 @@ void setup()
   // corresponds to 2000*0.4 us = 0.8 ms on our 20 MHz processor.
   robot.init(2000);
 
+  // While pololu dont start, set timeout
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
     if(OrangutanPushbuttons::isPressed(BUTTON_A)){
       if(timeout > 0){
@@ -81,16 +83,17 @@ void setup()
       OrangutanBuzzer::playFromProgramSpace(plim2);
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
     }
+    // While pololu dont start, set speed
     /*if(OrangutanPushbuttons::isPressed(BUTTON_A)){
-      if(speed_max >= 10){
-        speed_max = speed_max - 10;
+      if(speed_now >= 10){
+        speed_now = speed_now - 10;
         OrangutanBuzzer::playFromProgramSpace(plim1);
       }
       OrangutanPushbuttons::waitForRelease(BUTTON_A);
     }
     if(OrangutanPushbuttons::isPressed(BUTTON_C)){
-      if(speed_max <= 240){
-        speed_max = speed_max + 10;
+      if(speed_now <= 240){
+        speed_now = speed_now + 10;
         OrangutanBuzzer::playFromProgramSpace(plim2);
       }
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
@@ -135,7 +138,7 @@ void setup()
 
 // The main function.  This function is repeatedly called by
 // the Arduino framework.
-void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
+void loop(){
   int right_max = 5;
   int method_right[right_max] = {STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180};
   int left_max = 5;
@@ -143,7 +146,7 @@ void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
 
   int i_left = 0;
   int i_right = 0;
-  unsigned int counter = 0;
+  unsigned int counter = 0; // timeout to 2 different tags
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
     if(i_right > right_max-1)
       i_right = 0;
@@ -173,14 +176,14 @@ void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
     // the proportional, integral, and derivative terms are multiplied to
     // improve performance.
     int power_difference;
-    if(speed_max <= 100)
+    if(speed_now <= 100)
       power_difference = proportional/20 + integral/10000 + derivative*3/2;
     else
       power_difference = proportional/3 + integral/50000 + derivative*4/1;
 
     // Compute the actual motor settings.  We never set either motor
     // to a negative value.
-    int maximum = speed_max;
+    int maximum = speed_now;
     if (power_difference > maximum)
       power_difference = maximum;
     if (power_difference < -maximum)
@@ -191,19 +194,19 @@ void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
     else
       OrangutanMotors::setSpeeds(maximum, maximum - power_difference);
 
-    if(counter > 200){ // && proportional >= -1500 && proportional <= 1500
-      // Quando os sensores 4 ou 0 estao no valor maximo
-      // o pololu encontrou uma segunda pista
+    if(counter > 200){
+      // When the sensors 4 and 0 are 1000
+      // the pololu found another tag
       if(sensors[4] == 1000){ // RIGHT
         counter = 0;
         OrangutanBuzzer::playFromProgramSpace(plim1);
-        do_all(method_right[i_right]);
+        fix_it(method_right[i_right]);
         i_right++;
       }
       if(sensors[0] == 1000){ // LEFT
         counter = 0;
         OrangutanBuzzer::playFromProgramSpace(plim2);
-        do_all(method_left[i_left]);
+        fix_it(method_left[i_left]);
         i_left++;
       }
     }
@@ -216,46 +219,36 @@ void loop(){ //STOP,DOUBLE_SPEED,TURN360,HALF_SPEED,TURN180
   while (!OrangutanPushbuttons::isPressed(BUTTON_B)){
     if(OrangutanPushbuttons::isPressed(BUTTON_A)){
       OrangutanPushbuttons::waitForRelease(BUTTON_A);
-      do_all(MUSIC1);
+      fix_it(MUSIC1);
     }
     if(OrangutanPushbuttons::isPressed(BUTTON_C)){
       OrangutanPushbuttons::waitForRelease(BUTTON_C);
-      do_all(MUSIC2);
+      fix_it(MUSIC2);
     }
   }
   OrangutanPushbuttons::waitForRelease(BUTTON_B);
   delay(1000);
 }
-void do_all(int action){
+void fix_it(int action){
       if(action == STOP){
-        int speed_now = speed_max;
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(0,0);
+        brake();
         if(timeout == 0)
           delay(100);
         else
           delay(timeout*1000);
       }
       if(action == DOUBLE_SPEED){
-        speed_max = speed_max*2;
-        if(speed_max > SPEEDLIMIT_MAX)
-          speed_max = SPEEDLIMIT_MAX;
+        speed_now = speed_now*2;
+        if(speed_now > SPEED_MAX)
+          speed_now = SPEED_MAX;
       }
       if(action == HALF_SPEED){
-        speed_max = speed_max/2;
-        if(speed_max < SPEEDLIMIT_MINIMUM)
-          speed_max = SPEEDLIMIT_MINIMUM;
+        speed_now = speed_now/2;
+        if(speed_now < SPEED_MIN)
+          speed_now = SPEED_MIN;
       }
       if(action == TURN360){
-        int speed_now = speed_max;
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(0,0);
+        brake();
         int counter;
         for (counter=0; counter<40; counter++){
           OrangutanMotors::setSpeeds(80, -80);
@@ -263,12 +256,7 @@ void do_all(int action){
         }
       }
       if(action == TURN180){
-        int speed_now = speed_max;
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(speed_now/2, speed_now/2);
-        delay(20);
-        OrangutanMotors::setSpeeds(0,0);
+        brake();
         int counter;
         for (counter=0; counter<20; counter++){
           OrangutanMotors::setSpeeds(80, -80);
@@ -283,4 +271,13 @@ void do_all(int action){
         OrangutanBuzzer::playFromProgramSpace(music2);
         while(OrangutanBuzzer::isPlaying());
       }
+}
+
+void brake(){
+    int speed_stop = speed_now;
+    OrangutanMotors::setSpeeds(speed_stop/2, speed_stop/2);
+    delay(20);
+    OrangutanMotors::setSpeeds(speed_stop/2, speed_stop/2);
+    delay(20);
+    OrangutanMotors::setSpeeds(0,0);
 }
