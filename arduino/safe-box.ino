@@ -137,6 +137,7 @@ void loop()
                 Serial.print(digit);
                 passwordAt[pass_i] = digit;
                 pass_i++;
+                beepSound();
             }
 
             if (pass_i == passwordSize)
@@ -163,7 +164,7 @@ void loop()
                     else
                     {
                         Serial.println(" three times in a row!");
-                        delay(2500);
+                        delay(1500);
                         attempts = 0;
                     }
                     digitalWrite(buzzerPin, LOW);
@@ -203,6 +204,7 @@ void loop()
                     Serial.print(digit);
                     passwordAt[pass_i] = digit;
                     pass_i++;
+                    beepSound();
                 }
 
                 if (pass_i == passwordSize)
@@ -212,6 +214,8 @@ void loop()
                     Serial.println("password change successfully!");
                     pass_i = 0;
                     isLocked = true;
+                    beepSound();
+                    beepSound();
                 }
             }
         }
