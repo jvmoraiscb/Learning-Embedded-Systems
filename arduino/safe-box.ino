@@ -1,33 +1,5 @@
-/*
-  Debounce
-
-  Each time the input pin goes from LOW to HIGH (e.g. because of a push-button
-  press), the output pin is toggled from LOW to HIGH or HIGH to LOW. There's a
-  minimum delay between toggles to debounce the circuit (i.e. to ignore noise).
-
-  The circuit:
-  - LED attached from pin 13 to ground through 220 ohm resistor
-  - pushbutton attached from pin 2 to +5V
-  - 10 kilohm resistor attached from pin 2 to ground
-
-  - Note: On most Arduino boards, there is already an LED on the board connected
-    to pin 13, so you don't need any extra components for this example.
-
-  created 21 Nov 2006
-  by David A. Mellis
-  modified 30 Aug 2011
-  by Limor Fried
-  modified 28 Dec 2012
-  by Mike Walters
-  modified 30 Aug 2016
-  by Arturo Guadalupi
-
-  This example code is in the public domain.
-
-  https://www.arduino.cc/en/Tutorial/BuiltInExamples/Debounce
-*/
-
 // buttons pins:
+const int servoPin = 11;
 const int buzzerPin = 10;
 const int greenLedPin = 9;
 const int redLedPin = 8;
@@ -92,7 +64,7 @@ bool isChangingPassword = false;
 void setup()
 {
     Serial.begin(9600);
-
+    
     pinMode(redLedPin, OUTPUT);
     pinMode(greenLedPin, OUTPUT);
     pinMode(buzzerPin, OUTPUT);
@@ -130,14 +102,14 @@ void loop()
             {
                 Serial.println("\nreset attempt!");
                 pass_i = 0;
-                beepSound();
+                beepSound(1);
             }
             else if (pass_i < passwordSize)
             {
                 Serial.print(digit);
                 passwordAt[pass_i] = digit;
                 pass_i++;
-                beepSound();
+                beepSound(1);
             }
 
             if (pass_i == passwordSize)
@@ -148,8 +120,7 @@ void loop()
                 {
                     isLocked = false;
                     Serial.println("safe-box unlocked!");
-                    beepSound();
-                    beepSound();
+                    beepSound(1);
                 }
                 else
                 {
@@ -180,14 +151,13 @@ void loop()
                 {
                     Serial.print("insert the new password: ");
                     isChangingPassword = true;
-                    beepSound();
+                    beepSound(1);
                 }
                 else
                 {
                     Serial.println("safe-box locked!");
                     isLocked = true;
-                    beepSound();
-                    beepSound();
+                    beepSound(1);
                 }
             }
             else
@@ -197,14 +167,14 @@ void loop()
                     Serial.println("\npassword change canceled!");
                     isChangingPassword = false;
                     pass_i = 0;
-                    beepSound();
+                    beepSound(1);
                 }
                 else if (pass_i < passwordSize)
                 {
                     Serial.print(digit);
                     passwordAt[pass_i] = digit;
                     pass_i++;
-                    beepSound();
+                    beepSound(1);
                 }
 
                 if (pass_i == passwordSize)
@@ -214,8 +184,8 @@ void loop()
                     Serial.println("password change successfully!");
                     pass_i = 0;
                     isLocked = true;
-                    beepSound();
-                    beepSound();
+                    isChangingPassword = false;
+                    beepSound(2);
                 }
             }
         }
@@ -313,12 +283,14 @@ void buttonDebounce(int buttonPin, int *lastButtonState, unsigned long *lastDebo
     *lastButtonState = reading;
 }
 
-void beepSound()
+void beepSound(int n)
 {
-    digitalWrite(buzzerPin, HIGH);
-    delay(100);
-    digitalWrite(buzzerPin, LOW);
-    delay(100);
+    for(int i = 0; i < n; i++){
+      digitalWrite(buzzerPin, HIGH);
+      delay(100);
+      digitalWrite(buzzerPin, LOW);
+      delay(100);
+    }
 }
 
 bool comparePasswords(int *pass1, int *pass2)
